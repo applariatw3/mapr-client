@@ -39,7 +39,7 @@ MAPR_CONFIGURE_SCRIPT="$MAPR_HOME/server/configure.sh"
 #Interrupt entrypoint if command overridden
 
 #Reset the MAPR hostid to be unique for each container, set hostname to running container hostname
-hostname -f | grep $POD_NAME | grep -q -v grep && echo $(hostname -f) > $MAPR_HOME/hostname
+#hostname -f | grep $POD_NAME | grep -q -v grep && echo $(hostname -f) > $MAPR_HOME/hostname
 
 #Configure default environment script
 echo "#!/bin/bash" > $MAPR_ENV_FILE
