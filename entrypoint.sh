@@ -13,7 +13,7 @@ set +e
 MAPR_MCS=${MAPR_MCS:-mapr-cldb}
 MAPR_MCS_PORT=${MAPR_MCS_PORT:-8443}
 MAPR_SECURITY=${MAPR_SECURITY:-disabled}
-MAPR_MEMORY=${NODE_MEMORY:-4G}
+MAPR_MEMORY=${NODE_MEMORY:-0}
 MAPR_ADMIN_UID=${MAPR_ADMIN_UID:-5000}
 MAPR_ADMIN_GID=${MAPR_ADMIN_GID:-5000}
 MAPR_ADMIN=${MAPR_ADMIN:-mapr}
@@ -92,7 +92,7 @@ if [ ! -d /var/run/sshd ]; then
 fi
 
 #set memory for container
-if [ "$MAPR_ORCHESTRATOR" = "k8s" ]; then
+if [ "$MAPR_ORCHESTRATOR" = "k8s" -a $MAPR_MEMORY -ne 0 ]; then
 	mem_file="$MAPR_HOME/conf/container_meminfo"
 	mem_char=$(echo "$MAPR_MEMORY" | grep -o -E '[kmgKMG]')
 	mem_number=$(echo "$MAPR_MEMORY" | grep -o -E '[0-9]+')
@@ -108,7 +108,7 @@ if [ "$MAPR_ORCHESTRATOR" = "k8s" ]; then
 		k|K) mem_total=$(($mem_number)) ;;
 	esac
 	cp -f -v /proc/meminfo $mem_file
-	chown $MAPR_USER:$MAPR_GROUP $mem_file
+	chown $MAPR_CLIENT_USER:$MAPR_GROUP $mem_file
 	chmod 644 $mem_file
 	sed -i "s!/proc/meminfo!${mem_file}!" "$MAPR_HOME/server/initscripts-common.sh" || \
 		echo "Could not edit initscripts-common.sh"
@@ -179,7 +179,7 @@ check_hosts(){
 #Confirm cluster services are ready
 cycles=0
 check_cldb=1
-until $(curl --output /dev/null -Iskf https://${MAPR_MCS_HOST}:${MAPR_MCS_PORT}); do
+until $(curl --output /dev/null -Iskf https://${MAPR_MCS}:${MAPR_MCS_PORT}); do
 	echo "Waiting for MCS to start..."
 	if [ $cycles -le 10 ]; then
 		sleep 60
@@ -191,7 +191,7 @@ until $(curl --output /dev/null -Iskf https://${MAPR_MCS_HOST}:${MAPR_MCS_PORT})
 	let cycles+=1
 done
 
-find_cldb="curl -sSk -u mapr:$MAPR_ADMIN_PASSWORD https://${MAPR_MCS_HOST}:${MAPR_MCS_PORT}/rest/node/cldbmaster"
+find_cldb="curl -sSk -u mapr:$MAPR_ADMIN_PASSWORD https://${MAPR_MCS}:${MAPR_MCS_PORT}/rest/node/cldbmaster"
 if [ $check_cldb -eq 1 ]; then
 	until [ "$($find_cldb | jq -r '.status')" = "OK" ]; do
 		echo "Waiting for cldb host validation..."
