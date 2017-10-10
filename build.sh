@@ -1,14 +1,14 @@
 #!/bin/sh
 #mapr client build script
 
-#Map or set defaults for client packages
+#Map or set defaults pulled from  for client packages
 INSTALL_HBASE_CLIENT=${INSTALL_HBASE_CLIENT:-false}
 INSTALL_HIVE_CLIENT=${INSTALL_HIVE_CLIENT:-false}
 INSTALL_PIG_CLIENT=${INSTALL_PIG_CLIENT:-false}
 INSTALL_POSIX_CLIENT=${INSTALL_POSIX_CLIENT:-true}
 INSTALL_SPARK_CLIENT=${INSTALL_SPARK_CLIENT:-false}
-INSTALL_STREAMS_CLIENT=${INSTALL_STREAMS_CLIENT:-false}
-INSTALL_YARN_CLIENT=${INSTALL_YARN_CLIENT:-false}
+INSTALL_STREAMS_CLIENT=${INSTALL_STREAMS_CLIENT:-true}
+INSTALL_YARN_CLIENT=${INSTALL_YARN_CLIENT:-true}
 
 #set environment
 MAPR_PKG_GROUPS=()
@@ -47,7 +47,6 @@ done
 echo "Installing the following pakcages in image: $PACKAGES"
 
 /opt/mapr/installer/docker/mapr-setup.sh -r http://package.mapr.com/releases container client $MAPR_VERSION_CORE $MAPR_VERSION_MEP $PACKAGES
-
 
 
 exit 0
