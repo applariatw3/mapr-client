@@ -34,6 +34,7 @@ export CLASSPATH=$CLASSPATH
 #internal environment
 MAPR_CLUSTER_CONF="$MAPR_HOME/conf/mapr-clusters.conf"
 MAPR_CONFIGURE_SCRIPT="$MAPR_HOME/server/configure.sh"
+MAPR_FUSE_FILE="$MAPR_HOME/conf/fuse.conf"
 
 
 #Interrupt entrypoint if command overridden
@@ -43,27 +44,27 @@ MAPR_CONFIGURE_SCRIPT="$MAPR_HOME/server/configure.sh"
 
 #Configure default environment script
 echo "#!/bin/bash" > $MAPR_ENV_FILE
-echo "JAVA_HOME=\"$JAVA_HOME\"" >> $MAPR_ENV_FILE
-echo "MAPR_CLUSTER=\"$MAPR_CLUSTER\"" >> $MAPR_ENV_FILE
-echo "MAPR_HOME=\"$MAPR_HOME\"" >> $MAPR_ENV_FILE
-[ -f "$MAPR_HOME/bin/mapr" ] && echo "MAPR_CLASSPATH=\"\$($MAPR_HOME/bin/mapr classpath)\"" >> $MAPR_ENV_FILE
-[ -n "$MAPR_MOUNT_PATH" ] && echo "MAPR_MOUNT_PATH=\"$MAPR_MOUNT_PATH\"" >> $MAPR_ENV_FILE
+echo "export JAVA_HOME=\"$JAVA_HOME\"" >> $MAPR_ENV_FILE
+echo "export MAPR_CLUSTER=\"$MAPR_CLUSTER\"" >> $MAPR_ENV_FILE
+echo "export MAPR_HOME=\"$MAPR_HOME\"" >> $MAPR_ENV_FILE
+[ -f "$MAPR_HOME/bin/mapr" ] && echo "export MAPR_CLASSPATH=\"\$($MAPR_HOME/bin/mapr classpath)\"" >> $MAPR_ENV_FILE
+[ -n "$MAPR_MOUNT_PATH" ] && echo "export MAPR_MOUNT_PATH=\"$MAPR_MOUNT_PATH\"" >> $MAPR_ENV_FILE
 if [ -n "$MAPR_TICKETFILE_LOCATION" ]; then
-	local ticket="MAPR_TICKETFILE_LOCATION=$MAPR_TICKETFILE_LOCATION"
+	local ticket="export MAPR_TICKETFILE_LOCATION=$MAPR_TICKETFILE_LOCATION"
 
 	echo "$ticket" >> /etc/environment
 	echo "$ticket" >> $MAPR_ENV_FILE
 	sed -i -e "s|MAPR_TICKETFILE_LOCATION=.*|MAPR_TICKETFILE_LOCATION=$MAPR_TICKETFILE_LOCATION|" \
 		"$MAPR_HOME/initscripts/$MAPR_PACKAGE_POSIX"
 fi
-echo "PATH=\"\$JAVA_HOME:\$PATH:\$MAPR_HOME/bin\"" >> $MAPR_ENV_FILE
+echo "export PATH=\"\$JAVA_HOME:\$PATH:\$MAPR_HOME/bin\"" >> $MAPR_ENV_FILE
 
-#Create the mapr admin user
-#if id $MAPR_ADMIN >/dev/null 2>&1; then
-#	echo "Mapr admin user already exists"
-#else
-#	$MAPR_CONTAINER_DIR/mapr-create-user.sh $MAPR_ADMIN $MAPR_ADMIN_UID $MAPR_ADMIN_GROUP $MAPR_ADMIN_GID $MAPR_ADMIN_PASSWORD
-#fi
+Create the mapr admin user
+if id $MAPR_ADMIN >/dev/null 2>&1; then
+	echo "Mapr admin user already exists"
+else
+	$MAPR_CONTAINER_DIR/mapr-create-user.sh $MAPR_ADMIN $MAPR_ADMIN_UID $MAPR_ADMIN_GROUP $MAPR_ADMIN_GID $MAPR_ADMIN_PASSWORD
+fi
 
 #Create the mapr client user
 if id $MAPR_CLIENT_USER >/dev/null 2>&1; then
@@ -132,50 +133,6 @@ if [ -n "$MAPR_SUBNETS" ]; then
 		echo "Could not edit MAPR_SUBNETS in $env_file"
 fi
 
-#Update /etc/hosts file
-find_host_ip(){
-	cnt=0
-	until getent hosts $1; do
-		 let cnt++
-		 echo "Waiting for MAPR host to resolve, attempt $cnt"
-		 [ $cnt -gt 4 ] && check_failed=1 && return
-		 sleep 3
-	done
-}
-
-check_hosts(){
-	IFS=',' read -ra RMH <<< "$1"
-	node=0
-	FQLIST=()
-	for i in "${RMH[@]}"; do
-        host=$(echo $i | cut -d ':' -f 1)
-        
-        #fqhost="$host.$NAMESPACE.svc.cluster.local"
-        fqhost=$host
-        if cat /etc/hosts |grep $fqhost; then
-                echo "Found /etc/hosts entry for $fqhost"
-        else
-                echo "Looking up IP for $fqhost"
-                check_failed=0
-                find_host_ip $fqhost
-                [ $check_failed -eq 0 ] && echo "$(getent hosts $fqhost | awk '{ print $1 }')      $(getent hosts $fqhost | awk '{ print $2 }')      $(echo $fqhost |cut -d '.' -f 1)" >> /etc/hosts
-        fi
-        let node++
-	done
-}
-
-#[ -n ${MAPR_CLDB_HOSTS} ] && check_hosts ${MAPR_CLDB_HOSTS}
-#[ -n ${MAPR_ZK_HOSTS} ] && check_hosts ${MAPR_ZK_HOSTS}
-#[ -n ${MAPR_RM_HOSTS} ] && check_hosts ${MAPR_RM_HOSTS}
-#[ -n ${MAPR_HS_HOST} ] && check_hosts ${MAPR_HS_HOST}
-#[ -n ${MYSQL_HOST} ] && check_hosts ${MYSQL_HOST}
-#[ -n ${MAPR_ES_HOSTS} ] && check_hosts ${MAPR_ES_HOSTS}
-#[ -n ${MAPR_OT_HOSTS} ] && check_hosts ${MAPR_OT_HOSTS}
-#[ -n ${MAPR_FS_HOSTS} ] && check_hosts ${MAPR_FS_HOSTS}
-#[ -n ${MAPR_YARN_HOSTS} ] && check_hosts ${MAPR_YARN_HOSTS}
-
-#echo "MAPR Cluster containers added to /etc/hosts"
-
 #Confirm cluster services are ready
 cycles=0
 check_cldb=1
@@ -219,7 +176,15 @@ fi
 chown -R $MAPR_CLIENT_USER:$MAPR_CLIENT_GROUP "$MAPR_HOME"
 chown -fR root:root "$MAPR_HOME/conf/proxy"
 
-if [ -n "$MAPR_MOUNT_PATH" -a -f $MAPR_HOME"/conf/fuse.conf" ]; then
+
+if [ -n "$MAPR_MOUNT_PATH" -a -f "$MAPR_FUSE_FILE" ]; then
+	if $(hadoop fs -test -d $MAPR_MOUNT_PATH); then
+		echo "Spark directory exists"
+	else
+		echo "Creating Spark Directory"
+		hadoop fs -mkdir $MAPR_MOUNT_PATH
+		hadoop fs -chmod 777 $MAPR_MOUNT_PATH
+	fi
 	sed -i "s|^fuse.mount.point.*$|fuse.mount.point=$MAPR_MOUNT_PATH|g" \
 		$MAPR_FUSE_FILE || echo "Could not set FUSE mount path"
 	mkdir -p -m 755 "$MAPR_MOUNT_PATH"
