@@ -182,9 +182,9 @@ chown -fR root:root "$MAPR_HOME/conf/proxy"
 
 if [ -n "$MAPR_MOUNT_PATH" -a -f "$MAPR_FUSE_FILE" ]; then
 	if $(hadoop fs -test -d $MAPR_MOUNT_PATH); then
-		echo "Spark directory exists"
+		echo "$MAPR_MOUNT_PATH directory exists"
 	else
-		echo "Creating Spark Directory"
+		echo "Creating $MAPR_MOUNT_PATH on MAPR-FS"
 		hadoop fs -mkdir $MAPR_MOUNT_PATH
 		hadoop fs -chmod 777 $MAPR_MOUNT_PATH
 	fi
