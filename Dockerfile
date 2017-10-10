@@ -7,10 +7,10 @@ ARG artifact_root="."
 #Copy files into place
 COPY $artifact_root/build.sh /build.sh
 COPY $artifact_root/entrypoint.sh /entrypoint.sh
-COPY $artifact_root/config/ /config/
 COPY $artifact_root/code/ /code/
 
 #Install mapr packages
+RUN chmod +x /build.sh /entrypoint.sh
 RUN /build.sh 
 
 EXPOSE 22
