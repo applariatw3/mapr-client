@@ -1,5 +1,8 @@
 #!/bin/sh
 #mapr client entrypoint script
+echo "Output from build process"
+cat /tmp/build.log
+echo "End of build log"
 
 echo "Starting MAPR Client PACC as ${POD_NAME} from entrypoint.sh"
 
