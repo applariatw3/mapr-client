@@ -17,16 +17,18 @@ MAPR_MCS=${MAPR_MCS:-mapr-cldb}
 MAPR_MCS_PORT=${MAPR_MCS_PORT:-8443}
 MAPR_SECURITY=${MAPR_SECURITY:-disabled}
 MAPR_MEMORY=${NODE_MEMORY:-0}
-MAPR_ADMIN_UID=${MAPR_ADMIN_UID:-5000}
-MAPR_ADMIN_GID=${MAPR_ADMIN_GID:-5000}
+#Mapr Admin User
 MAPR_ADMIN=${MAPR_ADMIN:-mapr}
-MAPR_ADMIN_PASSWORD=${MAPR_ADMIN_PASSWORD:-mapr522301}
+MAPR_ADMIN_UID=${MAPR_ADMIN_UID:-5000}
 MAPR_ADMIN_GROUP=${MAPR_ADMIN_GROUP:-mapr}
-MAPR_CLIENT_UID=${MAPR_CLIENT_UID:-1000}
-MAPR_CLIENT_GID=${MAPR_CLIENT_GID:-100}
+MAPR_ADMIN_GID=${MAPR_ADMIN_GID:-5000}
+MAPR_ADMIN_PASSWORD=${MAPR_ADMIN_PASSWORD:-mapr522301}
+#Mapr Client User
 MAPR_CLIENT_USER=${MAPR_CLIENT_USER:-demo}
-MAPR_CLIENT_PASSWORD=${MAPR_CLIENT_PASSWORD:-demo123}
+MAPR_CLIENT_UID=${MAPR_CLIENT_UID:-1000}
 MAPR_CLIENT_GROUP=${MAPR_CLIENT_GROUP:-users}
+MAPR_CLIENT_GID=${MAPR_CLIENT_GID:-100}
+MAPR_CLIENT_PASSWORD=${MAPR_CLIENT_PASSWORD:-demo123}
 
 
 #export path
@@ -179,15 +181,23 @@ fi
 chown -R $MAPR_CLIENT_USER:$MAPR_CLIENT_GROUP "$MAPR_HOME"
 chown -fR root:root "$MAPR_HOME/conf/proxy"
 
+#Configure Hive
+if [ -d ${MAPR_HOME}/hive ]; then
+	echo "export HIVE_HOME=\"${MAPR_HOME}/hive/hive-${ver}\"" >> $MAPR_ENV_FILE
+	echo "export PATH=\"\$PATH:\$HIVE_HOME/bin\"" >> $MAPR_ENV_FILE
+fi
 
+#Start Services
+#Starting Fuse
 if [ -n "$MAPR_MOUNT_PATH" -a -f "$MAPR_FUSE_FILE" ]; then
 	if $(hadoop fs -test -d $MAPR_MOUNT_PATH); then
-		echo "$MAPR_MOUNT_PATH directory exists"
+		echo "$MAPR_MOUNT_PATH directory exists in MAPR-FS"
 	else
 		echo "Creating $MAPR_MOUNT_PATH on MAPR-FS"
 		hadoop fs -mkdir $MAPR_MOUNT_PATH
 		hadoop fs -chmod 777 $MAPR_MOUNT_PATH
 	fi
+	echo "Starting Fuse Client with $MAPR_MOUNT_PATH"
 	sed -i "s|^fuse.mount.point.*$|fuse.mount.point=$MAPR_MOUNT_PATH|g" \
 		$MAPR_FUSE_FILE || echo "Could not set FUSE mount path"
 	mkdir -p -m 755 "$MAPR_MOUNT_PATH"
