@@ -203,13 +203,6 @@ fi
 #Start Services
 #Starting Fuse
 if [ -n "$MAPR_MOUNT_PATH" -a -f "$MAPR_FUSE_FILE" ]; then
-	if $(hadoop fs -test -d $MAPR_MOUNT_PATH); then
-		echo "$MAPR_MOUNT_PATH directory exists in MAPR-FS"
-	else
-		echo "Creating $MAPR_MOUNT_PATH on MAPR-FS"
-		hadoop fs -mkdir $MAPR_MOUNT_PATH
-		hadoop fs -chmod 777 $MAPR_MOUNT_PATH
-	fi
 	echo "Starting Fuse Client with $MAPR_MOUNT_PATH"
 	sed -i "s|^fuse.mount.point.*$|fuse.mount.point=$MAPR_MOUNT_PATH|g" \
 		$MAPR_FUSE_FILE || echo "Could not set FUSE mount path"
