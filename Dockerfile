@@ -1,5 +1,5 @@
-FROM applariat/mapr-client-base:5.2.2_3.0.1
-#Starting from mapr client base image
+FROM applariat/mapr-base:centos6
+#Starting from mapr base image
 
 ARG artifact_root="."
 #Additional build args from AppLariat component configuration will be inserted dynamically
