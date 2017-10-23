@@ -1,10 +1,14 @@
 #!/bin/sh
 #mapr client entrypoint script
+echo "*****"
 echo "Output from build process"
+echo "*****"
 cat /tmp/build.log
+echo
 echo "End of build log"
-
-echo "Starting MAPR Client PACC as ${POD_NAME} from entrypoint.sh"
+echo "*****"
+echo
+echo "Starting MAPR Client PACC as ${POD_NAME} from /entrypoint.sh"
 
 set -e
 #set environment from inputs
@@ -26,7 +30,7 @@ MAPR_ADMIN_PASSWORD=${MAPR_ADMIN_PASSWORD:-mapr522301}
 #Mapr Client User
 MAPR_CLIENT_USER=${MAPR_CLIENT_USER:-demo}
 MAPR_CLIENT_UID=${MAPR_CLIENT_UID:-1000}
-MAPR_CLIENT_GROUP=${MAPR_CLIENT_GROUP:-users}
+MAPR_CLIENT_GROUP=${MAPR_CLIENT_GROUP:-mapr}
 MAPR_CLIENT_GID=${MAPR_CLIENT_GID:-100}
 MAPR_CLIENT_PASSWORD=${MAPR_CLIENT_PASSWORD:-demo123}
 
@@ -129,14 +133,18 @@ fi
 
 #Set variables MAPR_HOME, JAVA_HOME, [ MAPR_SUBNETS (if set)] in conf/env.sh
 env_file="$MAPR_HOME/conf/env.sh"
-sed -i "s:^#export JAVA_HOME.*:export JAVA_HOME=${JAVA_HOME}:" "$env_file" || \
-	echo "Could not edit JAVA_HOME in $env_file"
-sed -i "s:^#export MAPR_HOME.*:export MAPR_HOME=${MAPR_HOME}:" "$env_file" || \
-	echo "Could not edit MAPR_HOME in $env_file"
-if [ -n "$MAPR_SUBNETS" ]; then
-	sed -i "s:^#export MAPR_SUBNETS.*:export MAPR_SUBNETS=${MAPR_SUBNETS}:" "$env_file" || \
-		echo "Could not edit MAPR_SUBNETS in $env_file"
+
+if [ -f $env_file ]; then
+	sed -i "s:^#export JAVA_HOME.*:export JAVA_HOME=${JAVA_HOME}:" "$env_file" || \
+		echo "Could not edit JAVA_HOME in $env_file"
+	sed -i "s:^#export MAPR_HOME.*:export MAPR_HOME=${MAPR_HOME}:" "$env_file" || \
+		echo "Could not edit MAPR_HOME in $env_file"
+	if [ -n "$MAPR_SUBNETS" ]; then
+		sed -i "s:^#export MAPR_SUBNETS.*:export MAPR_SUBNETS=${MAPR_SUBNETS}:" "$env_file" || \
+			echo "Could not edit MAPR_SUBNETS in $env_file"
+	fi
 fi
+
 
 #Confirm cluster services are ready
 cycles=0
@@ -169,9 +177,14 @@ if [ -f "$MAPR_CLUSTER_CONF" ]; then
 	echo "Re-configuring MapR client ($args)..."
 	$MAPR_CONFIGURE_SCRIPT $args
 else
-	. $MAPR_HOME/conf/env.sh
-	args="$args -c -on-prompt-cont y -N $MAPR_CLUSTER -C $MAPR_CLDB_HOSTS"
+	echo "Running client configuration"
+	[ -f $env_file ] && . $env_file
+	args="$args -c -on-prompt-cont y -N $MAPR_CLUSTER -C $MAPR_CLDB_HOSTS "
 	[ -n "$MAPR_TICKETFILE_LOCATION" ] && args="$args -secure"
+	[ -n "$MAPR_RM_HOSTS" ] && args="$args -RM $MAPR_RM_HOSTS"
+	[ -n "$MAPR_HS_HOST" ] && args="$args -HS $MAPR_HS_HOST"
+	[ -n "$MAPR_OT_HOSTS" ] && args="$args -OT $MAPR_OT_HOSTS"
+	[ -n "$MAPR_ES_HOSTS" ] && args="$args -ES $MAPR_ES_HOSTS"
 	args="$args -v"
 	echo "Configuring MapR client ($args)..."
 	$MAPR_CONFIGURE_SCRIPT $args

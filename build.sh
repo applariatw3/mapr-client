@@ -58,7 +58,7 @@ done
 
 echo "Installing the following pakcages in image: $PACKAGES"
 
-/opt/mapr/installer/docker/mapr-setup.sh -r http://package.mapr.com/releases container client $MAPR_VERSION_CORE $MAPR_VERSION_MEP $PACKAGES
+/opt/mapr/docker/mapr-setup.sh -r $MAPR_PKG_URL container client $MAPR_VERSION_CORE $MAPR_VERSION_MEP $PACKAGES
 
 
 exit 0
